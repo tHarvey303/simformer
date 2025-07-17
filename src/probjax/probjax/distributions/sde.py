@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from jax.random import PRNGKeyArray
+from jaxtyping import PRNGKeyArray
 
 from functools import partial
 from typing import Callable, Union, Optional

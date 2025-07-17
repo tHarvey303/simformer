@@ -4,9 +4,11 @@ from scoresbibm.tasks.sbibm_tasks import LinearGaussian, MixtureGaussian, TwoMoo
 from scoresbibm.tasks.all_conditional_tasks import TwoMoonsAllConditionalTask, SLCPAllConditionalTask, NonlinearGaussianTreeAllConditionalTask, NonlinearMarcovChainAllConditionalTask
 from scoresbibm.tasks.unstructured_tasks import LotkaVolterraTask, SIRTask
 from scoresbibm.tasks.hhtask import HHTask
-
+from scoresbibm.tasks.custom_tasks import GalaxyPhotometryTask
+from scoresbibm.tasks.base_task import InferenceTask
 
 def get_task(name: str, backend: str = "jax"):
+    print(name)
     if name == "gaussian_linear":
         return LinearGaussian(backend=backend)
     elif name == "gaussian_mixture":
@@ -33,5 +35,10 @@ def get_task(name: str, backend: str = "jax"):
         return SIRTask(backend=backend)
     elif name == "hh":
         return HHTask(backend=backend)
+    elif name == "galaxy_photometry" or name == "galaxy_photometry_task":
+        return GalaxyPhotometryTask(backend=backend)
+    elif name == 'inference_task':
+        return InferenceTask(name=name, backend=backend)
     else:
-        raise NotImplementedError()
+        return GalaxyPhotometryTask(backend=backend)
+        # raise NotImplementedError()

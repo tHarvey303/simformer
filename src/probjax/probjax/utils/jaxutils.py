@@ -9,7 +9,7 @@ from functools import wraps, partial
 from jax._src.flatten_util import ravel_pytree
 from jax._src.api_util import flatten_fun_nokwargs as flatten_fun_nokwargs_
 
-from jax import linear_util as lu
+from jax.extend import linear_util as lu
 
 
 @lu.transformation

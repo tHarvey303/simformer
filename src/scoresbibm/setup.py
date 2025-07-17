@@ -18,7 +18,7 @@ REQUIRED = [
     "numpy",
     "matplotlib",
     "jax",
-    "torch@http://download.pytorch.org/whl/cpu-cxx11-abi/torch-2.1.0%2Bcpu.cxx11.abi-cp310-cp310-linux_x86_64.whl#sha256=88f1ee550c6291af8d0417871fb7af84b86527d18bc02ac4249f07dcd84dda56",
+    "torch==2.1.0",
     "torchaudio",
     "torchvision",
     "hydra-core",

@@ -9,7 +9,7 @@ from jax.tree_util import tree_leaves
 from functools import partial
 from jaxtyping import Array, Float, PyTree, Int
 from typing import Callable, Optional, Union
-from jax.random import PRNGKeyArray
+from jaxtyping import PRNGKeyArray
 
 
 from probjax.utils.brownian import get_iterated_integrals_fn

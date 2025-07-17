@@ -13,7 +13,7 @@ from probjax.utils.odeint import odeint, _odeint
 import numpy as np
 import optax
 
-from scoresbibm.methods.guidance import register_classifier_free_guidance, register_generalized_guidance, register_naive_inpaint_guidance, repaint, generalized_guidance, get_constraint_fn
+from scoresbibm.methods.guidance import register_classifier_free_guidance, register_naive_inpaint_guidance, repaint, generalized_guidance, get_constraint_fn
 
 class Model(ABC):
     """
