@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional,Sequence
+from typing import Any, Callable, Optional,Sequence, Union
 from jax.random import PRNGKey
 from jaxtyping import PyTree, Array
 
@@ -64,7 +64,7 @@ class MCMCState:
         return cls(*children)
 
 
-def unzip_vals(states: PyTree[MCMCState] | MCMCState) -> PyTree[Array] | Array:
+def unzip_vals(states: Union[PyTree[MCMCState], MCMCState]) -> Union[PyTree[Array], Array]:
     """Unzips the states into a tuple of (x, key)"""
     x = jax.tree_map(lambda x: x.x, states, is_leaf=lambda x: isinstance(x, MCMCState))
     return x
@@ -72,8 +72,8 @@ def unzip_vals(states: PyTree[MCMCState] | MCMCState) -> PyTree[Array] | Array:
 
 class MCMCKernel:
     def __call__(
-        self, state: PyTree[MCMCState] | MCMCState
-    ) -> PyTree[MCMCState] | MCMCState:
+        self, state: Union[PyTree[MCMCState], MCMCState]
+    ) -> Union[PyTree[MCMCState], MCMCState]:
         new_state = jax.tree_map(
             self._update_mcmc_state, state, is_leaf=lambda x: isinstance(x, MCMCState)
         )
@@ -189,8 +189,8 @@ class MetropolisHastingKernel(PotentialBasedMCMCKernel):
         super().__init__(*args, **kwargs)
 
     def __call__(
-        self, state: Sequence[MCMCState] | MCMCState
-    ) -> Sequence[MCMCState] | MCMCState:
+        self, state: Union[Sequence[MCMCState], MCMCState]
+    ) -> Union[Sequence[MCMCState], MCMCState]:
         new_state = super().__call__(state)
         if isinstance(new_state, MCMCState):
             key, key_accept = jax.random.split(new_state.key)
@@ -224,8 +224,8 @@ class MetropolisHastingKernel(PotentialBasedMCMCKernel):
 
     def _mh_hastings_logratio(
         self,
-        val_old: PyTree[Array] | Array,
-        val_new: PyTree[Array] | Array,
+        val_old: Union[PyTree[Array], Array],
+        val_new: Union[PyTree[Array], Array],
     ) -> Array:
         logratio = self.potential_fn(*val_new) - self.potential_fn(*val_old)
 
@@ -459,7 +459,7 @@ class KernelTransformation(MCMCKernel):
     def __init__(self, kernel) -> None:
         self.kernel = kernel
 
-    def __call__(self, state: PyTree | MCMCState) -> PyTree | MCMCState:
+    def __call__(self, state: Union[PyTree, MCMCState]) -> Union[PyTree, MCMCState]:
         return super().__call__(state)
 
     def _sample(self, key, x):

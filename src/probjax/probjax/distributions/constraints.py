@@ -206,22 +206,22 @@ class StrictNegativeInteger(IntegerInterval):
 
 
 class Matrix(Real):
-    def _is_contained(self, x: Any | Constraint) -> bool:
+    def _is_contained(self, x: Union[Any, Constraint]) -> bool:
         return super()._is_contained(x) and len(x.shape) >= 2
 
 
 class SquareMatrix(Matrix):
-    def _is_contained(self, x: Any | Constraint) -> bool:
+    def _is_contained(self, x: Union[Any, Constraint]) -> bool:
         return super()._is_contained(x) and x.shape[-1] == x.shape[-2]
 
 
 class SymmetricMatrix(SquareMatrix):
-    def _is_contained(self, x: Any | Constraint) -> bool:
+    def _is_contained(self, x: Union[Any, Constraint]) -> bool:
         return super()._is_contained(x) and jnp.allclose(x, jnp.transpose(x, (-2, -1)))
 
 
 class PositiveDefiniteMatrix(SymmetricMatrix):
-    def _is_contained(self, x: Any | Constraint) -> bool:
+    def _is_contained(self, x: Union[Any, Constraint]) -> bool:
         return super()._is_contained(x) and jnp.all(jnp.linalg.eigvals(x) > 0)
 
 

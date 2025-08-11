@@ -187,8 +187,6 @@ class GalaxyPhotometryTask(InferenceTask):
         
 
         def base_mask_fn(node_ids, node_meta_data):    
-            print(node_ids, node_meta_data)
-            
             # Handles potential permutation/subsetting of nodes
             return base_mask[jnp.ix_(node_ids, node_ids)]
         

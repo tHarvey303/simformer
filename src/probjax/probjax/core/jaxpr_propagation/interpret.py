@@ -25,11 +25,11 @@ def interpret(
     invars: Sequence[Var],
     inputs: Sequence[Array],
     outvars: Sequence[Var],
-    process_eqn: ProcessingRule
-    | Callable[
+    process_eqn: Union[ProcessingRule,
+    Callable[
         [JaxprEqn, Sequence[Optional[Array]], Sequence[Optional[Array]]],
         Tuple[Sequence[Var], Any],
-    ] = ForwardProcessingRule(),
+    ]] = ForwardProcessingRule(),
 ):
     env = Environment()
 

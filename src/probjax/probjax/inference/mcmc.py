@@ -16,13 +16,13 @@ from probjax.utils.jaxutils import flatten_fun, ravel_fun
 class MCMC:
     def __init__(
         self,
-        kernel: PyTree[MCMCKernel] | MCMCKernel,
-        potential_fn: Callable[[PyTree[Array] | Array], Array],
+        kernel: Union[PyTree[MCMCKernel], MCMCKernel],
+        potential_fn: Callable[[PyTree[Array], Array], Array],
     ) -> None:
         self.kernel = kernel
         self.potential_fn = potential_fn
 
-    def _check_potential_fn(self, x: PyTree[Array] | Array) -> Array:
+    def _check_potential_fn(self, x: Union[PyTree[Array], Array]) -> Array:
         try:
             self.potential_fn(x)
         except:
@@ -44,7 +44,7 @@ class MCMC:
 
 
     @partial(jax.jit, static_argnums=(0,))
-    def run(self, state: PyTree[MCMCState] | MCMCState, num_steps: int):
+    def run(self, state: Union[PyTree[MCMCState], MCMCState], num_steps: int):
         # Flat the state
         flat_state, in_tree = jax.tree_flatten(
             state, is_leaf=lambda x: isinstance(x, MCMCState)

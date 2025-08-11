@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 import haiku as hk
 
-from typing import Callable, Any, List
+from typing import Callable, Any, List, Union
 from jaxtyping import Array, PyTree
 
 
@@ -13,7 +13,7 @@ class CouplingMLP(hk.Module):
         split_index: int,
         bijector: Callable[[Array, Array], Array],
         num_bijector_params: int,
-        context: Array | None = None,
+        context: Union[Array, None] = None,
         hidden_dims: List[int] = [
             50,
         ],

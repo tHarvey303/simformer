@@ -4,6 +4,7 @@ import numpy as np
 from jax import random
 from jax import lax
 from jax.scipy.special import erfinv, erf
+from typing import Union
 
 from jaxtyping import Array
 
@@ -293,7 +294,7 @@ class Dirac(Distribution):
 class Empirical(Distribution):
     arg_constraints = {"values": real, "probs": simplex}
 
-    def __init__(self, values: Array, probs: Array | None = None):
+    def __init__(self, values: Array, probs: Union[Array, None] = None):
         self.values = jnp.atleast_1d(values)
         self.support = finit_set(self.values)
 

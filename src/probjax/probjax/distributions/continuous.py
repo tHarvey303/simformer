@@ -5,7 +5,7 @@ from jax import lax
 from jax.scipy.special import erfinv, erf, gammaln, digamma
 
 from jaxtyping import Array
-from typing import Optional
+from typing import Optional, Union
 from warnings import warn
 
 from .exponential_family import ExponentialFamily
@@ -89,7 +89,7 @@ class Normal(ExponentialFamily):
     arg_constraints = {"loc": real, "scale": strict_positive}
     support = real
 
-    def __init__(self, loc: Array | float, scale: Array | float):
+    def __init__(self, loc: Union[Array, float], scale: Union[Array, float]):
         loc = jnp.asarray(loc)
         scale = jnp.asarray(scale)
         self.loc, self.scale = jnp.broadcast_arrays(loc, scale)

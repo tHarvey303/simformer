@@ -2,7 +2,7 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from typing import Callable, Any, List, Optional
+from typing import Callable, Any, List, Optional, Union
 from functools import partial
 from jaxtyping import Array, PyTree
 
@@ -121,9 +121,9 @@ class OneHot(hk.Module):
     """One hot encoding module."""
 
     num_tokens: int  # Size of the vocabulary.
-    name: str | None = None  # Optional identifier for the module.
+    name: Union[str, None] = None  # Optional identifier for the module.
 
-    def __init__(self, num_tokens: int, name: str | None = "one_hot_embed"):
+    def __init__(self, num_tokens: int, name: Union[str, None] = "one_hot_embed"):
         """_summary_
 
         Args:

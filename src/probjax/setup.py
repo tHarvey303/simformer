@@ -19,11 +19,11 @@ AUTHOR = "Anonymous"
 REQUIRES_PYTHON = ">=3.7.0"
 
 REQUIRED = [
-    "numpy==1.26.3",
-    "scipy==1.11.4",
+    "numpy<=2.0.0",
+    "scipy",
     "matplotlib",
-    "jax==0.4.23",
-    "jaxlib==0.4.23",
+    "jax",
+    "jaxlib",
     "dm-haiku<=0.0.11",
     "optax",
     "ott-jax",

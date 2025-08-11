@@ -5,7 +5,7 @@ from probjax.core.jaxpr_propagation.utils import ForwardProcessingRule
 from probjax.core.custom_primitives.random_variable import rv_p
 from probjax.core.jaxpr_propagation.interpret import interpret
 
-from typing import Any, Iterable, Sequence, Optional, Tuple
+from typing import Any, Iterable, Sequence, Optional, Tuple, Union
 from jaxtyping import Array
 
 
@@ -21,8 +21,8 @@ class IntervenedProcessingRule(ForwardProcessingRule):
         self.interventions = interventions
 
     def __call__(
-        self, eqn: JaxprEqn, known_inputs: Sequence[Any | None], _: Sequence[Any | None]
-    ) -> Tuple[Sequence[Any | None], Sequence[Any | None]]:
+        self, eqn: JaxprEqn, known_inputs: Sequence[Union[Any, None]], _: Sequence[Union[Any, None]]
+    ) -> Tuple[Sequence[Union[Any, None]], Sequence[Union[Any, None]]]:
         if eqn.primitive is rv_p:
             name = eqn.params["name"]
             if name in self.interventions:

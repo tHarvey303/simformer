@@ -249,8 +249,8 @@ def moralize_dag(dag: nx.DiGraph) -> nx.Graph:
 
 
 def subgraph(
-    graph: nx.DiGraph | nx.Graph, nodes: Sequence[str]
-) -> nx.DiGraph | nx.Graph:
+    graph: Union[nx.DiGraph, nx.Graph], nodes: Sequence[str]
+) -> Union[nx.DiGraph, nx.Graph]:
     # Edge preserving subgraph, with subnodes.
     subgraph = graph.__class__()
     for node in nodes:
@@ -285,7 +285,7 @@ class JaxprGraph:
         self,
         jaxpr: Jaxpr,
         maxlevel: int = jnp.inf,
-        graph: nx.DiGraph | None = None,
+        graph: Union[nx.DiGraph, None] = None,
     ) -> None:
         self._jaxpr = jaxpr
         if graph is None:

@@ -46,7 +46,7 @@ class Tokenizer(hk.Module):
         learn_node_embeding: bool = True,
         learn_value_embeding: bool = False,
         learn_meta_data_embeding: bool = False,
-        name: str | None = "tokenizer",
+        name: Union[str, None] = "tokenizer",
     ):
         """Base class for tokenizers."""
         self.output_dim = output_dim
@@ -114,7 +114,7 @@ class ScalarTokenizer(Tokenizer):
         learn_node_embeding: bool = True,
         learn_value_embeding: bool = False,
         learn_meta_data_embeding: bool = True,
-        name: str | None = "scalar_tokenizer",
+        name: Union[str, None] = "scalar_tokenizer",
     ):
         """Tokenize a scalar data into a vector, by concatenating the node id, value and additional meta data.
 
@@ -245,7 +245,7 @@ class StructuredTokenizer(Tokenizer):
         learn_node_embeding: bool = True,
         learn_value_embeding: bool = False,
         learn_meta_data_embeding: bool = False,
-        name: str | None = "tokenizer",
+        name: Union[str, None] = "tokenizer",
     ):
         self.max_sequence_length = max_sequence_length
         self.data_name_to_id = data_name_to_id

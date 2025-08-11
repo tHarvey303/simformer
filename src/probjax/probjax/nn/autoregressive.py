@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from haiku.nets import MLP
 from jaxtyping import Array, PyTree
 
-from typing import Callable, Any, List
+from typing import Callable, Any, List, Union
 
 from probjax.core.custom_primitives.custom_inverse import custom_inverse
 from probjax.core.transformation import inverse_and_logabsdet, inverse
@@ -62,7 +62,7 @@ class MaskedMLP(MLP):
         self.custom_mask_getter = custom_mask_getter
         self.context_layer = hk.Linear(output_sizes[0])
 
-    def __call__(self, inputs: Array, context: Array | None = None, rng=None) -> Array:
+    def __call__(self, inputs: Array, context: Union[Array, None] = None, rng=None) -> Array:
         num_layers = len(self.layers)
         in_dim = inputs.shape[-1]
         out = inputs
@@ -90,7 +90,7 @@ def autoregressive_transform(
     # Autoregressive transformation accelerated by MADE
     @hk.without_apply_rng
     @hk.transform
-    def forward(x, context: Array | None = None):
+    def forward(x, context: Union[Array, None] = None):
         conditionor = MaskedMLP(
             autoregressive_mask_getter, output_sizes, *args, **kwargs
         )
@@ -101,7 +101,7 @@ def autoregressive_transform(
     # The inverse now however must be done sequentially, and is provided through a custom_inverse primitive
     @hk.without_apply_rng
     @hk.transform
-    def inv(y, context: Array | None = None):
+    def inv(y, context: Union[Array, None] = None):
         conditionor = MaskedMLP(
             autoregressive_mask_getter, output_sizes, *args, **kwargs
         )
@@ -138,7 +138,7 @@ class AutoregressiveMLP:
         self.bijector = bijector
         self.num_bijector_params = num_bijector_params
 
-    def __call__(self, inputs: Array, context: Array | None = None, rng=None) -> Array:
+    def __call__(self, inputs: Array, context: Union[Array, None] = None, rng=None) -> Array:
         init_rng = hk.next_rng_keys(1)[0] if hk.running_init() else None
         input_dim = inputs.shape[-1]
         # Autoregressive transformation accelerated by MADE
@@ -150,7 +150,7 @@ class AutoregressiveMLP:
         init = hk.lift(init_fn)
 
         # After initialization we can savely call the function
-        def f(x: Array, context: Array | None = None):
+        def f(x: Array, context: Union[Array, None] = None):
             params = init(init_rng, x, context)
             return apply_fn(params, x, context)
 

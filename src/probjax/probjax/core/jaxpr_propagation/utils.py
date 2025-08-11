@@ -23,7 +23,7 @@ import math
 class Environment(dict):
     """A compute environment that stores intermediate computations."""
 
-    def __getitem__(self, var: Atom | None) -> Optional[Array]:
+    def __getitem__(self, var: Union[Atom, None]) -> Optional[Array]:
         if isinstance(var, Literal):
             return var.val
         elif var in self:
@@ -31,17 +31,17 @@ class Environment(dict):
         else:
             return None
 
-    def __setitem__(self, var: Atom | None, val: Array | None) -> None:
+    def __setitem__(self, var: Union[Atom, None], val: Union[Array, None]) -> None:
         if not isinstance(var, Literal):
             super().__setitem__(var, val)
 
-    def read(self, var: Atom | None) -> Array | None:
+    def read(self, var: Union[Atom, None]) -> Union[Array, None]:
         return self[var]
 
-    def write(self, var: Atom | None, val: Array | None) -> None:
+    def write(self, var: Union[Atom, None], val: Union[Array, None]) -> None:
         self[var] = val
 
-    def known(self, var: Atom | None) -> bool:
+    def known(self, var: Union[Atom, None]) -> bool:
         return isinstance(var, Literal) or var in self
 
 
@@ -52,9 +52,9 @@ class ProcessingRule(ABC):
     def __call__(
         self,
         eqn: JaxprEqn,
-        known_inputs: Sequence[Any | None] | None,
-        known_outputs: Sequence[Any | None] | None,
-    ) -> Tuple[Sequence[Any | None], Sequence[Any | None]]:
+        known_inputs: Union[Sequence[Union[Any, None]],None],
+        known_outputs: Union[Sequence[Union[Any, None]],None],
+    ) -> Tuple[Sequence[Union[Any, None]], Sequence[Union[Any, None]]]:
         pass
 
 
@@ -62,9 +62,9 @@ class ForwardProcessingRule(ProcessingRule):
     def __call__(
         self,
         eqn: JaxprEqn,
-        known_inputs: Sequence[Array | None],
-        _: Sequence[Array | None],
-    ) -> Tuple[Sequence[Atom | None], Sequence[Array | None]]:
+        known_inputs: Sequence[Union[Any, None]],
+        _: Sequence[Union[Array, None]],
+    ) -> Tuple[Sequence[Union[Atom, None]], Sequence[Union[Array, None]]]:
         # assert (
         #     (known_inputs != None) and (None not in known_inputs)
         # ), "All inputs must be known for the forward pass."

@@ -3,7 +3,7 @@ from jax.core import Jaxpr, JaxprEqn, Literal, Var, Atom
 from jax.experimental.pjit import pjit_p
 from jax.custom_derivatives import custom_jvp_call_p
 from jax._src.util import safe_map as map
-from typing import Callable, Sequence, Tuple, Sequence, Optional, Any
+from typing import Callable, Sequence, Tuple, Sequence, Optional, Any, Union
 from jaxtyping import Array
 
 import math
@@ -112,11 +112,11 @@ def propagate(
     invars: Sequence[Var],
     inputs: Sequence[Array],
     outvars: Sequence[Var],
-    process_eqn: ProcessingRule
-    | Callable[
+    process_eqn: Union[ProcessingRule,
+    Callable[
         [JaxprEqn, Sequence[Optional[Array]], Sequence[Optional[Array]]],
         Tuple[Sequence[Var], Any],
-    ] = ForwardProcessingRule(),
+    ]] = ForwardProcessingRule(),
     cost_fn: Callable = naive_cost_fn,
     process_all_eqns: bool = False,
 ) -> Sequence[Optional[Array]]:

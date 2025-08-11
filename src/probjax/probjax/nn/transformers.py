@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import haiku as hk
 
 from jaxtyping import Array, PyTree
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from .attention import MultiHeadAttention
 
@@ -22,7 +22,7 @@ class Transformer(hk.Module):
     attn_size: int  # Size of the attention (key, query, value) vectors.
     dropout_rate: float  # Probability with which to apply dropout.
     widening_factor: int = 4  # Factor by which the MLP hidden layer widens.
-    name: str | None = None  # Optional identifier for the module.
+    name: Union[str, None] = None  # Optional identifier for the module.
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class Transformer(hk.Module):
         initializer: Optional[hk.initializers.Initializer] = None,
         save_attention_weights: bool = False,
         attention_method: str = "dense",
-        name: str | None = "transformer",
+        name: Union[str, None] = "transformer",
     ):
         super().__init__(name=name)
         self.num_heads = num_heads
@@ -60,7 +60,7 @@ class Transformer(hk.Module):
         self,
         inputs: Array,  # [B, T, D]
         context: Optional[Array] = None,  # [B, D_context]
-        mask: Array | None = None,  # [T, T] or [B, T, T]
+        mask: Union[Array, None] = None,  # [T, T] or [B, T, T]
     ) -> jax.Array:  # [B, T, D]
         """Transforms input embedding sequences to output embedding sequences."""
 
@@ -105,7 +105,7 @@ class Transformer(hk.Module):
         return ln(x)
 
     @hk.transparent
-    def attention_block(self, x: Array, mask: Array | None = None) -> Array:
+    def attention_block(self, x: Array, mask: Union[Array, None] = None) -> Array:
         """Applies a multi-head attention block to `x` with default settings."""
         attn_block = MultiHeadAttention(
             num_heads=self.num_heads,

@@ -7,7 +7,7 @@ from jaxtyping import Array
 from probjax.core.jaxpr_propagation.utils import ForwardProcessingRule
 from probjax.core.custom_primitives.random_variable import rv_p
 
-from typing import Callable, Sequence, Optional, Dict
+from typing import Callable, Sequence, Optional, Dict, Union
 
 
 def potential_cost_fn(
@@ -58,8 +58,8 @@ class LogPotentialProcessingRule(ForwardProcessingRule):
     def __call__(
         self,
         eqn: JaxprEqn,
-        in_known: Sequence[Array | None],
-        out_known: Sequence[Array | None],
+        in_known: Sequence[Union[Array, None]],
+        out_known: Sequence[Union[Array, None]],
     ):
         if eqn.primitive is rv_p:
             # We do not have to sample -> Already given

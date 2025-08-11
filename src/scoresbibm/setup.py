@@ -12,18 +12,15 @@ entry_points={
     ],
 }
 
+# To install CPU-only torch, see the README or install manually with:
+# pip install torch==2.1.0+cpu torchvision==0.16.0+cpu torchaudio==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu>>>>>>> a35055613aaae7c84067416932e5636ef34b2ed2
 
 
 REQUIRED = [
     "numpy",
     "matplotlib",
     "jax",
-<<<<<<< HEAD
-=======
-    # To install CPU-only torch, see the README or install manually with:
-    # pip install torch==2.1.0+cpu torchvision==0.16.0+cpu torchaudio==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
->>>>>>> a35055613aaae7c84067416932e5636ef34b2ed2
-    "torch==2.1.0",
+    "torch",
     "torchaudio",
     "torchvision",
     "hydra-core",
@@ -37,9 +34,9 @@ REQUIRED = [
     "pandas",
 ]
 
-os.system(
-    "pip install torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu"
-)
+#os.system(
+#    "pip install torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu"
+#)
 
 setup(
     name=NAME,
