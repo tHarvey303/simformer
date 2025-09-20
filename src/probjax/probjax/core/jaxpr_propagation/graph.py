@@ -6,9 +6,9 @@ import networkx as nx
 
 
 import jax.numpy as jnp
-from jax.experimental.pjit import pjit_p
+from jax.extend.core.primitives import jit_p
 
-from jax.core import Literal, Jaxpr
+from jax.extend.core import Literal, Jaxpr
 import re
 from typing import Callable, Any, Union, Tuple, Optional, Sequence, Dict
 from probjax.core.custom_primitives.random_variable import rv_p
@@ -133,7 +133,7 @@ def to_networkx(
     # Adding equations
     for i, eqn in enumerate(eqns):
         # Add function node
-        if level < maxlevel and eqn.primitive is pjit_p:
+        if level < maxlevel and eqn.primitive is jit_p:
             scopes += 1
             # Different naming scope
             invars = eqn.invars

@@ -1,5 +1,5 @@
 import jax
-from jax.core import JaxprEqn, ClosedJaxpr
+from jax.extend.core import JaxprEqn, ClosedJaxpr
 
 from probjax.core.jaxpr_propagation.utils import ForwardProcessingRule
 from probjax.core.custom_primitives.random_variable import rv_p

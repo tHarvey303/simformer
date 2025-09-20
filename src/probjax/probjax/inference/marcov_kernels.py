@@ -66,7 +66,7 @@ class MCMCState:
 
 def unzip_vals(states: Union[PyTree[MCMCState], MCMCState]) -> Union[PyTree[Array], Array]:
     """Unzips the states into a tuple of (x, key)"""
-    x = jax.tree_map(lambda x: x.x, states, is_leaf=lambda x: isinstance(x, MCMCState))
+    x = jax.tree_util.tree_map(lambda x: x.x, states, is_leaf=lambda x: isinstance(x, MCMCState))
     return x
 
 
@@ -74,7 +74,7 @@ class MCMCKernel:
     def __call__(
         self, state: Union[PyTree[MCMCState], MCMCState]
     ) -> Union[PyTree[MCMCState], MCMCState]:
-        new_state = jax.tree_map(
+        new_state = jax.tree_util.tree_map(
             self._update_mcmc_state, state, is_leaf=lambda x: isinstance(x, MCMCState)
         )
         return new_state
@@ -124,7 +124,7 @@ class MCMCKernel:
         params = self.init_params()
         stats = self.init_stats()
 
-        state = jax.tree_map(
+        state = jax.tree_util.tree_map(
             lambda x, k: MCMCState(k, x, params, stats), init_vals, tree.unflatten(keys)
         )
         return state
@@ -208,12 +208,12 @@ class MetropolisHastingKernel(PotentialBasedMCMCKernel):
             accept = jnp.expand_dims(accept, axis=-1)
 
         # Update the state
-        val = jax.tree_map(
+        val = jax.tree_util.tree_map(
             lambda v_new, v_old: jnp.where(accept, v_new, v_old),
             val_new,
             val_old,
         )
-        new_state = jax.tree_map(
+        new_state = jax.tree_util.tree_map(
             lambda s, v: s.set_x(v),
             new_state,
             val,

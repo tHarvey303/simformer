@@ -12,7 +12,7 @@ from jax.tree_util import tree_flatten, tree_unflatten, tree_leaves, tree_map
 from jax.interpreters import ad, batching
 from jax._src import ad_util
 
-from jax.core import Primitive, CallPrimitive
+from jax.extend.core import Primitive
 from jax._src.util import weakref_lru_cache, cache
 from jax._src import util
 
@@ -22,8 +22,9 @@ from jax._src.api_util import (
     flatten_fun_nokwargs,
     argnums_partial,
     flatten_fun_nokwargs,
-    shaped_abstractify,
 )
+from jax._src.core import shaped_abstractify
+
 
 from jax.interpreters import mlir
 from jax.interpreters import partial_eval as pe
@@ -57,7 +58,7 @@ def custom_inverse_call_lowering(ctx, *args, forward_jaxpr, inverse_jaxpr, **par
 mlir.register_lowering(custom_inverse_call_p, custom_inverse_call_lowering)
 
 
-@jax.util.cache()
+
 def process_jvp(forward_jaxpr, tangents):
     nonzeros = [type(t) is not ad_util.Zero for t in tangents]
     forward_jvp_jaxpr, forward_out_nz = ad.jvp_jaxpr(
@@ -67,7 +68,7 @@ def process_jvp(forward_jaxpr, tangents):
     # forward_jvp_jaxpr_ = pe.convert_constvars_jaxpr(forward_jvp_jaxpr.jaxpr)
     return forward_jvp_jaxpr, nonzero_tangents
 
-
+#@custom_inverse_call_p.def_jvp
 def custom_inverse_jvp(primals, tangents, forward_jaxpr, inverse_jaxpr, **params):
     forward_jvp_jaxpr, nonzero_tangents = process_jvp(forward_jaxpr, tangents)
 
@@ -82,70 +83,69 @@ def custom_inverse_jvp(primals, tangents, forward_jaxpr, inverse_jaxpr, **params
     ]
 
 
-def batch_custom_inverse_call(
-    spmd_axis_name, axis_size, axis_name, main_type, args, dims, **params
-):
+
+def _batch_custom_inverse_call_vmap(batched_args, batch_dims, **params):
+    """Batching rule for `custom_inverse_call_p` for `vmap`."""
+
+    # 1. Unpack the JAXPRs from the primitive's parameters.
     forward_jaxpr = params.pop("forward_jaxpr")
     inverse_jaxpr = params.pop("inverse_jaxpr")
 
-    # We have to batch the jaxprs. For that lets first get the invals and outvals
-    in_avals1 = forward_jaxpr.in_avals
-    out_avals1 = forward_jaxpr.out_avals
+    # 2. Batch the forward JAXPR.
+    # The modern way to "batch a JAXPR" is to wrap its evaluation in a
+    # Python function, apply `vmap` to that function, and then use
+    # `make_jaxpr` to get the new, batched JAXPR.
 
-    in_avals2 = inverse_jaxpr.in_avals
-    out_avals2 = inverse_jaxpr.out_avals
+    def fwd_eval_func(*args):
+        # A helper function that evaluates the original forward jaxpr.
+        return core.eval_jaxpr(forward_jaxpr.jaxpr, forward_jaxpr.literals, *args)
 
-    # We will batch all the inputs and outputs  (maybe do not batch consts ... )
-    in_batched1 = [True] * len(in_avals1)
-    out_batched1 = [True] * len(out_avals1)
+    # vmap this helper. `in_axes` are the batch dimensions of our inputs.
+    # `out_axes=0` means the outputs will be batched on the first axis.
+    vmapped_fwd_eval = vmap(fwd_eval_func, in_axes=batch_dims, out_axes=0)
 
-    in_batched2 = [True] * len(in_avals2)
-    out_batched2 = [True] * len(out_avals2)
+    # Trace the vmapped function to get the new batched JAXPR.
+    # We must provide the *unbatched* abstract values (avals) for the trace.
+    unbatched_avals = [
+        core.unmapped_aval(arg.aval, bdim) if bdim is not None else arg.aval
+        for arg, bdim in zip(batched_args, batch_dims)
+    ]
+    new_forward_closed_jaxpr = make_jaxpr(vmapped_fwd_eval)(*unbatched_avals)
 
-    # Applies the batching for the jaxprs
-    args = [batching.bdim_at_front(x, d, axis_size) for x, d in zip(args, dims)]
 
-    # Batched jaxprs
-    batched_forward_fn, out_size1 = batching.batch_jaxpr(
-        forward_jaxpr,
-        axis_size,
-        in_batched1,
-        out_batched1,
-        axis_name,
-        spmd_axis_name,
-        main_type,
-    )
-    batched_inverse_fn, _ = batching.batch_jaxpr(
-        inverse_jaxpr,
-        axis_size,
-        in_batched2,
-        out_batched2,
-        axis_name,
-        spmd_axis_name,
-        main_type,
-    )
+    # 3. Batch the inverse JAXPR using the same pattern.
+    def inv_eval_func(*args):
+        return core.eval_jaxpr(inverse_jaxpr.jaxpr, inverse_jaxpr.literals, *args)
 
-    # Update jaxprs with batched ones
+    # The inputs to the inverse function are the outputs of the forward one.
+    # Since we used `out_axes=0` above, the inputs here are batched on axis 0.
+    vmapped_inv_eval = vmap(inv_eval_func, in_axes=0, out_axes=0)
+
+    # Trace it using the output avals from the new forward jaxpr.
+    new_inverse_closed_jaxpr = make_jaxpr(vmapped_inv_eval)(*new_forward_closed_jaxpr.out_avals)
+
+    # 4. Recursively call the primitive.
+    # We use the original batched arguments but pass the *newly created*
+    # batched JAXPRs as parameters.
     out = custom_inverse_call_p.bind(
-        *args,
-        forward_jaxpr=batched_forward_fn,
-        inverse_jaxpr=batched_inverse_fn,
-        **params,
+        *batched_args,
+        forward_jaxpr=new_forward_closed_jaxpr,
+        inverse_jaxpr=new_inverse_closed_jaxpr,
+        **params
     )
 
-    # Outdim
-    out_dims = [0 if b else batching.not_mapped for b in out_size1]
-
+    # 5. Specify the output batch dimensions.
+    # Since we used `out_axes=0`, all outputs are batched on the first axis.
+    out_dims = [0] * len(out)
     return out, out_dims
 
-
+#@custom_inverse_call_p.def_transpose
 def custom_inverse_transpose(*args, **kwargs):
     return ad.call_transpose(custom_inverse_call_p, *args, **kwargs)
 
-
-batching.spmd_axis_primitive_batchers[custom_inverse_call_p] = batch_custom_inverse_call
+#batching.spmd_axis_primitive_batchers[custom_inverse_call_p] = batch_custom_inverse_call
 batching.axis_primitive_batchers[custom_inverse_call_p] = partial(
-    batch_custom_inverse_call, None
+    _batch_custom_inverse_call_vmap, None
 )
 ad.primitive_transposes[custom_inverse_call_p] = custom_inverse_transpose
 ad.primitive_jvps[custom_inverse_call_p] = custom_inverse_jvp

@@ -1,6 +1,7 @@
 import jax
-from jax.core import Jaxpr, JaxprEqn, Literal, Var, Atom
-from jax.experimental.pjit import pjit_p
+from jax.extend.core import Literal, Var, JaxprEqn, Jaxpr, ClosedJaxpr
+from jax.core import Atom
+from jax.extend.core.primitives import jit_p
 from jax.custom_derivatives import custom_jvp_call_p
 from jax._src.util import safe_map as map
 from typing import Callable, Sequence, Tuple, Sequence, Optional, Any, Union
@@ -156,8 +157,8 @@ def propagate(
         known_invars = map(env.read, eqn.invars)
         known_outvars = map(env.read, eqn.outvars)
 
-        if not all([v is not None for v in known_invars]) and eqn.primitive is pjit_p:
-            if eqn.primitive is pjit_p:
+        if not all([v is not None for v in known_invars]) and eqn.primitive is jit_p:
+            if eqn.primitive is jit_p:
                 closed_sub_jaxpr = eqn.params["jaxpr"]
             else:
                 closed_sub_jaxpr = eqn.params["call_jaxpr"]

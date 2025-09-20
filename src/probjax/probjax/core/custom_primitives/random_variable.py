@@ -1,10 +1,8 @@
-from jax.core import (
+from jax.extend.core import (
     Primitive,
     ClosedJaxpr,
-    new_sublevel,
-    eval_jaxpr,
-    ShapedArray,
 )
+from jax.core import eval_jaxpr, ShapedArray
 
 import jax
 import jax.random as jrandom
@@ -20,6 +18,7 @@ from jax.interpreters import batching
 from jax.interpreters import mlir
 from jax.interpreters.batching import batch_jaxpr
 from jax.interpreters import partial_eval as pe
+from jax._src.core import shaped_abstractify
 
 from jax._src.util import safe_map as map
 
@@ -73,7 +72,7 @@ def _sampling_logprobs_jaxprs_with_common_consts(sampling_fn, log_prob_fn):
     # out_trees = [sampling_out_trees, log_prob_out_trees]
 
     newvar = jax._src.core.gensym(jaxprs, suffix="_")  # type: ignore
-    all_const_avals = [map(api_util.shaped_abstractify, consts) for consts in consts]
+    all_const_avals = [map(shaped_abstractify, consts) for consts in consts]
     unused_const_vars = [map(newvar, const_avals) for const_avals in all_const_avals]
 
     def pad_jaxpr_constvars(i, jaxpr):
@@ -130,17 +129,16 @@ def rv(dist: Distribution, name: Hashable) -> Callable:
 
     return wrapped
 
-
+#@rv_p.def_impl
 def _rv_impl(*args, **params):
-    with new_sublevel():
-        call_jaxpr = params["sampling_fn_jaxpr"]
-        return eval_jaxpr(call_jaxpr.jaxpr, call_jaxpr.literals, *args)
 
+    call_jaxpr = params["sampling_fn_jaxpr"]
+    return eval_jaxpr(call_jaxpr.jaxpr, call_jaxpr.literals, *args)
 
+#@rv_p.def_abstract_eval
 def _rv_abstract_eval(*args, **params):
-    with new_sublevel():
-        call_jaxpr = params["sampling_fn_jaxpr"]
-        return call_jaxpr.out_avals
+    call_jaxpr = params["sampling_fn_jaxpr"]
+    return call_jaxpr.out_avals
 
 
 # JIT support
@@ -149,67 +147,63 @@ def _rv_lowering(ctx, *args, name, sampling_fn_jaxpr, log_prob_fn_jaxpr, **param
     return mlir.core_call_lowering(ctx, *args, name=name, call_jaxpr=call_jaxpr)
 
 
+rv_p = Primitive("random_variable")
+rv_p.multiple_results = True
+
 def _rv_transpose_rule(*args, **kwargs):
     return ad.call_transpose(rv_p, *args, **kwargs)
 
+def _rv_batching_rule(batched_args, batch_dims, **params):
+    """Modern batching rule for the 'random_variable' primitive."""
 
-def _rv_batching_rule(
-    spmd_axis_name, axis_size, axis_name, main_type, args, dims, **params
-):
+    # 1. Unpack the JAXPRs from the primitive's parameters.
     sampling_fn_jaxpr = params.pop("sampling_fn_jaxpr")
     log_prob_fn_jaxpr = params.pop("log_prob_fn_jaxpr")
 
-    # We have to batch the jaxprs. For that lets first get the invals and outvals
-    in_avals1 = sampling_fn_jaxpr.in_avals
-    out_avals1 = sampling_fn_jaxpr.out_avals
+    # 2. Batch the sampling JAXPR using the vmap -> make_jaxpr pattern.
+    def sampling_eval_func(*args):
+        # Helper to evaluate the original, unbatched sampling jaxpr.
+        return core.eval_jaxpr(sampling_fn_jaxpr.jaxpr, sampling_fn_jaxpr.literals, *args)
 
-    in_avals2 = log_prob_fn_jaxpr.in_avals
-    out_avals2 = log_prob_fn_jaxpr.out_avals
+    # vmap the helper function. `in_axes` are the batch dimensions of our inputs.
+    vmapped_sampling_eval = vmap(sampling_eval_func, in_axes=batch_dims, out_axes=0)
 
-    # We will batch all the inputs and outputs  (maybe do not batch consts ... )
-    in_batched1 = [True] * len(in_avals1)
-    out_batched1 = [True] * len(out_avals1)
+    # Trace the vmapped function to get the new batched JAXPR.
+    # We trace with the *unbatched* abstract values (avals).
+    unbatched_avals = [
+        core.unmapped_aval(arg.aval, bdim) if bdim is not None else arg.aval
+        for arg, bdim in zip(batched_args, batch_dims)
+    ]
+    new_sampling_closed_jaxpr = make_jaxpr(vmapped_sampling_eval)(*unbatched_avals)
 
-    in_batched2 = [True] * len(in_avals2)
-    out_batched2 = [True] * len(out_avals2)
+    # 3. Batch the log_prob JAXPR using the same pattern.
+    def log_prob_eval_func(*args):
+        # Helper to evaluate the original log_prob jaxpr.
+        return core.eval_jaxpr(log_prob_fn_jaxpr.jaxpr, log_prob_fn_jaxpr.literals, *args)
 
-    # Applies the batching for the jaxprs
-    args = [batching.bdim_at_front(x, d, axis_size) for x, d in zip(args, dims)]
+    # The inputs to the log_prob function are the outputs of the sampling one.
+    # Since we used `out_axes=0` for the sampling vmap, the inputs here are
+    # batched on axis 0.
+    vmapped_log_prob_eval = vmap(log_prob_eval_func, in_axes=0, out_axes=0)
 
-    # Batched jaxprs
-    batched_sampling_fn, out_size1 = batch_jaxpr(
-        sampling_fn_jaxpr,
-        axis_size,
-        in_batched1,
-        out_batched1,
-        axis_name,
-        spmd_axis_name,
-        main_type,
-    )
-    batched_log_prob_fn, _ = batch_jaxpr(
-        log_prob_fn_jaxpr,
-        axis_size,
-        in_batched2,
-        out_batched2,
-        axis_name,
-        spmd_axis_name,
-        main_type,
-    )
+    # Trace it using the output avals from the new sampling jaxpr.
+    new_log_prob_closed_jaxpr = make_jaxpr(vmapped_log_prob_eval)(*new_sampling_closed_jaxpr.out_avals)
 
-    # Update jaxprs with batched ones
+    # 4. Recursively call the primitive with the new batched JAXPRs.
     out = rv_p.bind(
-        *args,
-        sampling_fn_jaxpr=batched_sampling_fn,
-        log_prob_fn_jaxpr=batched_log_prob_fn,
+        *batched_args,
+        sampling_fn_jaxpr=new_sampling_closed_jaxpr,
+        log_prob_fn_jaxpr=new_log_prob_closed_jaxpr,
         **params
     )
 
-    # Outdim
-    out_dims = [0 if b else batching.not_mapped for b in out_size1]
-
+    # 5. Specify the output batch dimensions.
+    # Since we vmapped with `out_axes=0`, all outputs are batched on the first axis.
+    out_dims = [0] * len(out)
     return out, out_dims
 
 
+#@rv_p.def_jvp
 def custom_inverse_jvp(primals, tangents, sampling_fn_jaxpr, **params):
     nonzeros =  [type(t) is not ad_util.Zero for t in tangents]
     forward_jvp_jaxpr, forward_out_nz = ad.jvp_jaxpr(
@@ -225,11 +219,11 @@ def custom_inverse_jvp(primals, tangents, sampling_fn_jaxpr, **params):
     return new_primals, new_tangent
 
 
-rv_p = Primitive("random_variable")
-rv_p.multiple_results = True
 rv_p.def_impl(_rv_impl)
 rv_p.def_abstract_eval(_rv_abstract_eval)
-batching.spmd_axis_primitive_batchers[rv_p] = _rv_batching_rule
+
+
+#batching.spmd_axis_primitive_batchers[rv_p] = _rv_batching_rule
 batching.axis_primitive_batchers[rv_p] = partial(_rv_batching_rule, None)
 mlir.register_lowering(rv_p, _rv_lowering)
 ad.primitive_transposes[rv_p] = _rv_transpose_rule

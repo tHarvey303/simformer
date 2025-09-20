@@ -54,13 +54,13 @@ class MCMC:
 
         # Flatten the potential function, give it to all kernels (that might need it)
         flatten_potential_fn = flatten_fun(self.potential_fn, in_tree)
-        flat_kernel = jax.tree_map(
+        flat_kernel = jax.tree_util.tree_map(
             lambda x: x.set_potential_fn(flatten_potential_fn), flat_kernel
         )
 
         def body_fn(i, carry):
             state = carry
-            new_state = jax.tree_map(lambda kernel, x: kernel(x), flat_kernel, state)
+            new_state = jax.tree_util.tree_map(lambda kernel, x: kernel(x), flat_kernel, state)
             return new_state
 
         out_state = jax.lax.fori_loop(0, num_steps, body_fn, flat_state)

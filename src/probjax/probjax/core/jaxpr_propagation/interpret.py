@@ -1,7 +1,7 @@
 import jax
-
-from jax.core import Jaxpr, JaxprEqn, Literal, Var, Atom
-from jax.experimental.pjit import pjit_p
+from jax.core import Atom
+from jax.extend.core import Literal, Var,  JaxprEqn, Jaxpr
+from jax.extend.core.primitives import jit_p
 from jax._src.util import safe_map as map
 from typing import Callable, Sequence, Tuple, Union, Optional, Any
 from jaxtyping import Array
@@ -44,7 +44,7 @@ def interpret(
         known_outvars = map(env.read, eqn.outvars)
 
         # Higher level primitives i.e. jit requires recursive processing of the equation
-        if eqn.primitive is pjit_p:
+        if eqn.primitive is jit_p:
             sub_jaxpr = eqn.params["jaxpr"]
 
             sub_invars = []

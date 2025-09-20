@@ -28,8 +28,8 @@ def run_train_conditional_score_model(key, params, opt_state, data, num_epochs, 
     num_devices = jax.device_count()
     batch_size_per_device = batch_size // num_devices
     # Replicated for multiple devices
-    replicated_params = jax.tree_map(lambda x: jnp.array([x] * num_devices), params)
-    replicated_opt_state = jax.tree_map(lambda x: jnp.array([x] * num_devices), opt_state)
+    replicated_params = jax.tree_util.tree_map(lambda x: jnp.array([x] * num_devices), params)
+    replicated_opt_state = jax.tree_util.tree_map(lambda x: jnp.array([x] * num_devices), opt_state)
 
     for j in range(num_epochs):
         l = 0
@@ -41,7 +41,7 @@ def run_train_conditional_score_model(key, params, opt_state, data, num_epochs, 
         if (j % print_every) == 0:     
             print("Train loss: ",l)
             
-    params = jax.tree_map(lambda x: x[0], replicated_params)
+    params = jax.tree_util.tree_map(lambda x: x[0], replicated_params)
     
     return params
 

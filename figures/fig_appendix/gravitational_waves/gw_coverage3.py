@@ -160,7 +160,7 @@ def main():
 
         assert len(data) == len(embedding_nets), "Number of data elements and embedding nets must match"
         
-        data_embedded = jax.tree_map(lambda x, net: net(x[..., :,None]), data, embedding_nets)
+        data_embedded = jax.tree_util.tree_map(lambda x, net: net(x[..., :,None]), data, embedding_nets)
 
         data_embedded = jnp.concatenate(data_embedded, axis=-2)
         
@@ -184,7 +184,7 @@ def main():
             ),
         )
         condition_mask = unflatten(condition_mask)
-        condition_mask = jax.tree_map(lambda x: jnp.any(x, axis=-1, keepdims=True), condition_mask)
+        condition_mask = jax.tree_util.tree_map(lambda x: jnp.any(x, axis=-1, keepdims=True), condition_mask)
         condition_mask = jnp.concatenate(condition_mask, axis=-1)
         condition_mask = condition_mask.reshape(-1, current_nodes, 1)
         condition_token = condition_mask * condition_token
@@ -204,7 +204,7 @@ def main():
         
         h = model(tokens, context=time, mask=edge_mask)
         out = jnp.split(h, current_nodes, axis=-2)
-        out = jax.tree_map(lambda x, fn: fn(x), out, output_fn)
+        out = jax.tree_util.tree_map(lambda x, fn: fn(x), out, output_fn)
         out = jnp.concatenate(out, axis=-1)
         out = jnp.squeeze(out, axis=-2)
         out = output_scale_fn(t, out)

@@ -2,7 +2,7 @@ import jax
 
 from jax import lax
 
-from jax.core import Primitive, Jaxpr, JaxprEqn
+from jax.extend.core import Primitive, Jaxpr, JaxprEqn
 import functools
 
 from typing import Any, Callable, Optional
@@ -10,7 +10,7 @@ import numpy as np
 import jax.numpy as jnp
 from jax._src.util import safe_map
 from jax.custom_derivatives import custom_jvp_call_p
-from jax.experimental.pjit import pjit_p
+from jax.extend.core.primitives import jit_p
 
 from probjax.core.jaxpr_propagation.utils import ProcessingRule
 from probjax.core.jaxpr_propagation.propagate import propagate
@@ -346,7 +346,7 @@ def inverse_cost_fn(eqn, known_invars, known_outvars):
     if eqn.primitive is jax.lax.gather_p or eqn.primitive is jax.lax.slice_p:
         # Block gather till necessary!
         return 1.0
-    elif eqn.primitive is pjit_p and all(known_outvars):
+    elif eqn.primitive is jit_p and all(known_outvars):
         # Pjit is a special case
         return 1.5
     elif all(known_invars) and not any(known_outvars):
@@ -428,7 +428,7 @@ class InverseProcessingRule(ProcessingRule):
             )
         elif (
             not all(is_known_invars)
-            and eqn.primitive is jax.experimental.pjit.pjit_p
+            and eqn.primitive is jit_p
             #      or eqn.primitive is custom_jvp_call_p
         ):
             return None
@@ -543,7 +543,7 @@ class InverseAndLogAbsDetProcessingRule(InverseProcessingRule):
         ):
             return self._default_custom_rule_apply(eqn, known_invars, known_outvars)
         elif (
-            not all(is_known_invars) and eqn.primitive is jax.experimental.pjit.pjit_p
+            not all(is_known_invars) and eqn.primitive is jit_p
         ):  # or eqn.primitive is custom_jvp_call_p:
             return self._default_pjit(eqn, known_invars, known_outvars)
 

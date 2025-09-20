@@ -172,13 +172,13 @@ def structured_transformer_model(
 
     def model(t, data, condition_mask, meta_data=None, edge_mask=base_mask):
         current_nodes = len(data)
-        data_dim = jax.tree_map(lambda x: x.shape[-1], data)
+        data_dim = jax.tree_util.tree_map(lambda x: x.shape[-1], data)
         condition_mask = condition_mask.reshape(-1, current_nodes)
         
 
         tokenizer = StructuredTokenizer(token_dim, num_nodes, data_name_to_id,value_embeding_builder, node_embeding_builder, node_meta_data_embeding_builder)
         time_embeder = GaussianFourierEmbedding(time_embedding_dim)
-        output_layers = jax.tree_map(lambda x: hk.Linear(x), data_dim)
+        output_layers = jax.tree_util.tree_map(lambda x: hk.Linear(x), data_dim)
 
         # Embedding
         tokens = tokenizer(data, meta_data)
